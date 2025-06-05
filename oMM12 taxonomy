@@ -1,0 +1,81 @@
+# FILTER TABLE OMM12
+
+qiime feature-table filter-samples \
+  --i-table table-trimmed.qza \
+  --m-metadata-file metadata.txt \
+  --p-where "[Group]='omm'" \
+  --o-filtered-table omm-table.qza
+
+qiime feature-table summarize \
+  --i-table omm-table.qza \
+  --o-visualization omm-table.qzv \
+  --m-sample-metadata-file metadata.txt
+
+qiime feature-table filter-features \
+  --i-table omm-table.qza \
+  --p-min-frequency 40 \
+  --o-filtered-table omm-table-ff.qza
+
+qiime feature-table summarize \
+  --i-table omm-table-ff.qza \
+  --o-visualization omm-table-ff.qzv \
+  --m-sample-metadata-file metadata.txt
+
+qiime feature-table filter-seqs \
+  --i-data rep-seqs-trimmed.qza \
+  --i-table omm-table-ff.qza \
+  --p-no-exclude-ids \
+  --o-filtered-data omm-rep-seqs-ff.qza
+
+qiime feature-table tabulate-seqs \
+  --i-data omm-rep-seqs-ff.qza \
+  --o-visualization omm-rep-seqs-ff.qzv
+
+qiime tools import \
+  --type 'FeatureData[Sequence]' \
+  --input-path omm_16S_sequences.fasta \
+  --output-path omm-ref-seqs.qza
+
+qiime tools import \
+  --type 'FeatureData[Taxonomy]' \
+  --input-format HeaderlessTSVTaxonomyFormat \
+  --input-path omm_16S_taxonomy.txt \
+  --output-path omm-ref-taxonomy.qza
+
+qiime feature-classifier extract-reads \
+  --i-sequences omm-ref-seqs.qza \
+  --p-f-primer GTGYCAGCMGCCGCGGTAA \
+  --p-r-primer GGACTACNVGGGTWTCTAAT \
+  --p-trunc-len 250 \
+  --o-reads omm-ref-seqs-v4.qza
+
+qiime feature-classifier fit-classifier-naive-bayes \
+  --i-reference-reads omm-ref-seqs-v4.qza \
+  --i-reference-taxonomy omm-ref-taxonomy.qza \
+  --o-classifier omm-v4-classifier.qza
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier omm-v4-classifier.qza \
+  --i-reads omm-rep-seqs-ff.qza \
+  --o-classification omm-rep-seqs-ff-taxonomy.qza
+
+qiime metadata tabulate \
+  --m-input-file omm-rep-seqs-ff-taxonomy.qza \
+  --o-visualization omm-rep-seqs-ff-taxonomy.qzv
+
+qiime feature-table rarefy \
+  --i-table omm-table-ff.qza \
+  --p-sampling-depth 16827 \
+  --o-rarefied-table rar-16827-omm-table-ff.qza
+
+qiime diversity alpha-rarefaction \
+  --i-table rar-16827-omm-table-ff.qza \
+  --p-max-depth 16827 \
+  --o-visualization rar-16827-curve-omm-ff.qzv \
+  --m-metadata-file metadata.txt
+
+qiime taxa barplot \
+  --i-table rar-16827-omm-table-ff.qza \
+  --i-taxonomy omm-rep-seqs-ff-taxonomy.qza \
+  --m-metadata-file metadata.txt \
+  --o-visualization taxa-bar-plots-sklearn-omm.qzv
